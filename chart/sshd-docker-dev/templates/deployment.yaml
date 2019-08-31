@@ -19,8 +19,10 @@ spec:
         app: {{ include "sshd.name" . }}
         release: {{ .Release.Name }}
     spec:
-      {{- if $.Values.gcpSecretName }}
       volumes:
+            - name: docker-graph-storage
+              emptyDir: {}
+      {{- if $.Values.gcpSecretName }}
             - name: gcp-secret
               secret:
                 secretName: {{ .Values.gcpSecretName }}
@@ -34,16 +36,17 @@ spec:
         - name: dind
           image: "{{ .Values.dind.image.repository }}:{{ .Values.dind.image.tag }}"
           imagePullPolicy: {{ .Values.dind.image.pullPolicy }}
-          env:
-          - name: DOCKER_OPTS
-            value: ""
           securityContext:
             privileged: true
+          volumeMounts:
+            - name: docker-graph-storage
+              mountPath: /var/lib/docker
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-{{ toYaml .Values.env | indent 12 }}
+           - name: DOCKER_HOST
+             value: tcp://localhost:2375
           ports:
             - name: sshd
               containerPort: 22
